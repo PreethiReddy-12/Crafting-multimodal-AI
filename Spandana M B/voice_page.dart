@@ -1,61 +1,99 @@
 import 'package:flutter/material.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 class VoicePage extends StatefulWidget {
-  const VoicePage({super.key});
+  const VoicePage({Key? key}) : super(key: key);
 
   @override
   State<VoicePage> createState() => _VoicePageState();
 }
 
 class _VoicePageState extends State<VoicePage> {
-  final SpeechToText _speech = SpeechToText();
-  final FlutterTts _tts = FlutterTts();
+  late stt.SpeechToText _speech;
+  late FlutterTts _flutterTts;
+  bool _isListening = false;
+  String _text = 'Tap the mic and start speaking...';
 
-  final model = GenerativeModel(
-    model: 'gemini-pro',
-    apiKey: 'AIzaSyD4j_tzCsyI24FwStj_c-JH903DEgGlImI', // ⚠️ Consider securing this key
-  );
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    _flutterTts = FlutterTts();
 
-  String _transcription = '';
-  String _response = '';
+    _flutterTts.setLanguage('en-US');
+    _flutterTts.setPitch(1.0);
+  }
 
-  Future<void> _startListening() async {
-    bool available = await _speech.initialize();
-    if (available) {
-      _speech.listen(onResult: (result) async {
-        setState(() => _transcription = result.recognizedWords);
-
-        final response = await model.generateContent([
-          Content.text(_transcription),
-        ]);
-
-        setState(() => _response = response.text ?? 'No response received.');
-        await _tts.speak(_response);
-      });
+  Future<void> _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (status) => debugPrint('Speech status: $status'),
+        onError: (error) => debugPrint('Speech error: $error'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (result) {
+            setState(() {
+              _text = result.recognizedWords;
+            });
+          },
+        );
+      } else {
+        setState(() {
+          _text = 'Speech recognition not available';
+        });
+      }
     } else {
-      setState(() => _response = 'Speech recognition not available.');
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  Future<void> _speak() async {
+    if (_text.isNotEmpty) {
+      await _flutterTts.speak(_text);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Voice Assistant')),
+      appBar: AppBar(
+        title: const Text('Voice Assistant'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            ElevatedButton(
-              onPressed: _startListening,
-              child: const Text('Speak'),
+            Expanded(
+              child: Center(
+                child: Text(
+                  _text,
+                  style: const TextStyle(fontSize: 20),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            Text('You said: $_transcription'),
-            const SizedBox(height: 10),
-            Text('AI says: $_response'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'mic',
+                  onPressed: _listen,
+                  tooltip: _isListening ? 'Stop Listening' : 'Start Listening',
+                  child: Icon(_isListening ? Icons.stop : Icons.mic),
+                ),
+                FloatingActionButton(
+                  heroTag: 'tts',
+                  onPressed: _speak,
+                  tooltip: 'Speak Text',
+                  child: const Icon(Icons.volume_up),
+                ),
+              ],
+            ),
           ],
         ),
       ),

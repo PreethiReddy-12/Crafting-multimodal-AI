@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'chat_page.dart';
-import 'image_page.dart';
-import 'voice_page.dart';
+import 'package:gen_ai_fusion/chat_page.dart';
+import 'package:gen_ai_fusion/image_page.dart';
+import 'package:gen_ai_fusion/voice_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,9 +13,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'GenAI Craft Fusion',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
       home: const GenAITabHome(),
     );
